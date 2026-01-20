@@ -19,11 +19,12 @@ const (
 )
 
 type Config struct {
-	APIKey  string `toml:"api_key"`
-	JSON    bool
-	All     bool
-	Quiet   bool
-	Version bool
+	APIKey   string `toml:"api_key"`
+	JSON     bool
+	All      bool
+	Quiet    bool
+	Version  bool
+	Homonym  int
 }
 
 func loadConfigFile() string {
@@ -58,8 +59,9 @@ type WordSearchResult struct {
 }
 
 type WordMatch struct {
-	WordID   int64  `json:"wordId"`
+	WordID    int64  `json:"wordId"`
 	WordValue string `json:"wordValue"`
+	Lang      string `json:"lang"`
 }
 
 type WordDetails struct {
@@ -178,12 +180,13 @@ var nounMorphCodes = []string{"SgN", "SgG", "SgP", "PlP"}
 var verbMorphCodes = []string{"Sup", "Inf", "IndPrSg3", "PtsPtIps"}
 
 func main() {
-	cfg := Config{}
+	cfg := Config{Homonym: 1}
 	flag.BoolVar(&cfg.JSON, "json", false, "Output raw JSON")
 	flag.BoolVar(&cfg.All, "all", false, "Show all forms")
 	flag.BoolVar(&cfg.Quiet, "quiet", false, "Minimal output")
 	flag.BoolVar(&cfg.Quiet, "q", false, "Minimal output (shorthand)")
 	flag.BoolVar(&cfg.Version, "version", false, "Print version")
+	flag.IntVar(&cfg.Homonym, "homonym", 1, "Select homonym (when multiple exist)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: sonaveeb <word> [flags]\n\n")
 		fmt.Fprintf(os.Stderr, "Query Estonian word forms from Ekilex API\n\n")
@@ -230,7 +233,7 @@ func main() {
 func run(word string, cfg Config) error {
 	client := &http.Client{}
 
-	wordID, wordValue, err := searchWord(client, cfg.APIKey, word)
+	wordID, wordValue, totalHomonyms, err := searchWord(client, cfg.APIKey, word, cfg.Homonym)
 	if err != nil {
 		return err
 	}
@@ -254,7 +257,7 @@ func run(word string, cfg Config) error {
 		return enc.Encode(prettyJSON)
 	}
 
-	printForms(wordValue, details, cfg)
+	printForms(wordValue, details, cfg, cfg.Homonym, totalHomonyms)
 	return nil
 }
 
@@ -278,22 +281,36 @@ func apiGet(client *http.Client, apiKey, path string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func searchWord(client *http.Client, apiKey, word string) (int64, string, error) {
+func searchWord(client *http.Client, apiKey, word string, homonymIndex int) (int64, string, int, error) {
 	body, err := apiGet(client, apiKey, "/word/search/"+url.PathEscape(word))
 	if err != nil {
-		return 0, "", err
+		return 0, "", 0, err
 	}
 
 	var result WordSearchResult
 	if err := json.Unmarshal(body, &result); err != nil {
-		return 0, "", fmt.Errorf("failed to parse response: %w", err)
+		return 0, "", 0, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	if len(result.Words) == 0 {
-		return 0, "", fmt.Errorf("word not found: %s", word)
+	// Filter to Estonian words only
+	var estWords []WordMatch
+	for _, w := range result.Words {
+		if w.Lang == "est" {
+			estWords = append(estWords, w)
+		}
 	}
 
-	return result.Words[0].WordID, result.Words[0].WordValue, nil
+	if len(estWords) == 0 {
+		return 0, "", 0, fmt.Errorf("word not found: %s", word)
+	}
+
+	total := len(estWords)
+	idx := homonymIndex - 1
+	if idx < 0 || idx >= total {
+		return 0, "", 0, fmt.Errorf("homonym %d not found (have %d)", homonymIndex, total)
+	}
+
+	return estWords[idx].WordID, estWords[idx].WordValue, total, nil
 }
 
 func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDetails, error) {
@@ -324,7 +341,7 @@ func getParadigms(client *http.Client, apiKey string, wordID int64) ([]Paradigm,
 	return paradigms, body, nil
 }
 
-func printForms(word string, details *WordDetails, cfg Config) {
+func printForms(word string, details *WordDetails, cfg Config, homonymIndex, totalHomonyms int) {
 	if len(details.Paradigms) == 0 {
 		fmt.Println("No paradigm data available")
 		return
@@ -350,7 +367,12 @@ func printForms(word string, details *WordDetails, cfg Config) {
 	}
 
 	if !cfg.Quiet {
-		fmt.Printf("%s (%s, type %s)\n", word, posLabel, strings.TrimSpace(paradigm.InflectionTypeNr))
+		if totalHomonyms > 1 {
+			fmt.Printf("%s (%s, type %s)  [%d of %d — use --homonym=N for others]\n",
+				word, posLabel, strings.TrimSpace(paradigm.InflectionTypeNr), homonymIndex, totalHomonyms)
+		} else {
+			fmt.Printf("%s (%s, type %s)\n", word, posLabel, strings.TrimSpace(paradigm.InflectionTypeNr))
+		}
 	}
 
 	formMap := make(map[string]string)

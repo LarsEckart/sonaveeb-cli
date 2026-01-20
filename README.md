@@ -45,6 +45,7 @@ sonaveeb [flags] <word>
 
 - `-json` - Output raw JSON from API
 - `-all` - Show all forms (not just key forms)
+- `-homonym=N` - Select which homonym to show (when multiple exist)
 - `-q`, `-quiet` - Minimal output (forms only)
 - `-version` - Print version
 - `-h` - Show help
@@ -67,6 +68,15 @@ sonaveeb tegema
 #   da-tegevusnimi:                     teha
 #   kindel kõneviis olevikus 3.p:       teeb
 #   mineviku kesksõna umbisikuline:     tehtud
+
+# Word with multiple homonyms
+sonaveeb pank
+# pank (noun, type 22)  [1 of 3 — use --homonym=N for others]
+#   ainsuse nimetav:                    pank
+#   ...
+
+# Select specific homonym
+sonaveeb --homonym=2 pank
 
 # All forms
 sonaveeb -all puu
