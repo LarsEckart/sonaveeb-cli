@@ -175,20 +175,7 @@ var morphLabels = map[string]string{
 }
 
 var nounMorphCodes = []string{"SgN", "SgG", "SgP", "PlP"}
-var nounLabels = map[string]string{
-	"SgN": "ainsuse nimetav",
-	"SgG": "ainsuse omastav",
-	"SgP": "ainsuse osastav",
-	"PlP": "mitmuse osastav",
-}
-
 var verbMorphCodes = []string{"Sup", "Inf", "IndPrSg3", "PtsPtIps"}
-var verbLabels = map[string]string{
-	"Sup":      "ma-tegevusnimi",
-	"Inf":      "da-tegevusnimi",
-	"IndPrSg3": "kindel kõneviis olevikus 3.p",
-	"PtsPtIps": "mineviku kesksõna umbisikuline",
-}
 
 func main() {
 	cfg := Config{}
@@ -271,39 +258,8 @@ func run(word string, cfg Config) error {
 	return nil
 }
 
-func searchWord(client *http.Client, apiKey, word string) (int64, string, error) {
-	reqURL := fmt.Sprintf("%s/word/search/%s", apiBaseURL, url.PathEscape(word))
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return 0, "", err
-	}
-	req.Header.Set("ekilex-api-key", apiKey)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, "", fmt.Errorf("network error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, "", fmt.Errorf("API error: %s", resp.Status)
-	}
-
-	var result WordSearchResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if len(result.Words) == 0 {
-		return 0, "", fmt.Errorf("word not found: %s", word)
-	}
-
-	return result.Words[0].WordID, result.Words[0].WordValue, nil
-}
-
-func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDetails, error) {
-	reqURL := fmt.Sprintf("%s/word/details/%d", apiBaseURL, wordID)
-	req, err := http.NewRequest("GET", reqURL, nil)
+func apiGet(client *http.Client, apiKey, path string) ([]byte, error) {
+	req, err := http.NewRequest("GET", apiBaseURL+path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -319,8 +275,35 @@ func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDeta
 		return nil, fmt.Errorf("API error: %s", resp.Status)
 	}
 
+	return io.ReadAll(resp.Body)
+}
+
+func searchWord(client *http.Client, apiKey, word string) (int64, string, error) {
+	body, err := apiGet(client, apiKey, "/word/search/"+url.PathEscape(word))
+	if err != nil {
+		return 0, "", err
+	}
+
+	var result WordSearchResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		return 0, "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if len(result.Words) == 0 {
+		return 0, "", fmt.Errorf("word not found: %s", word)
+	}
+
+	return result.Words[0].WordID, result.Words[0].WordValue, nil
+}
+
+func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDetails, error) {
+	body, err := apiGet(client, apiKey, fmt.Sprintf("/word/details/%d", wordID))
+	if err != nil {
+		return nil, err
+	}
+
 	var details WordDetails
-	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
+	if err := json.Unmarshal(body, &details); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
@@ -328,24 +311,7 @@ func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDeta
 }
 
 func getParadigms(client *http.Client, apiKey string, wordID int64) ([]Paradigm, []byte, error) {
-	reqURL := fmt.Sprintf("%s/paradigm/details/%d", apiBaseURL, wordID)
-	req, err := http.NewRequest("GET", reqURL, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	req.Header.Set("ekilex-api-key", apiKey)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("network error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("API error: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := apiGet(client, apiKey, fmt.Sprintf("/paradigm/details/%d", wordID))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -410,14 +376,9 @@ func printForms(word string, details *WordDetails, cfg Config) {
 		return
 	}
 
-	var codes []string
-	var labels map[string]string
+	codes := nounMorphCodes
 	if isVerb {
 		codes = verbMorphCodes
-		labels = verbLabels
-	} else {
-		codes = nounMorphCodes
-		labels = nounLabels
 	}
 
 	for _, code := range codes {
@@ -425,7 +386,7 @@ func printForms(word string, details *WordDetails, cfg Config) {
 		if !ok {
 			value = "-"
 		}
-		label := labels[code]
+		label := morphLabels[code]
 		if cfg.Quiet {
 			fmt.Println(value)
 		} else {
