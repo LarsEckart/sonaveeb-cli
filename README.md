@@ -38,7 +38,7 @@ echo "your-key-here" > ~/.config/sonaveeb/config    # user
 ## Usage
 
 ```sh
-sonaveeb <word> [flags]
+sonaveeb [flags] <word>
 ```
 
 ### Flags
