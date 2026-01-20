@@ -52,21 +52,21 @@ sonaveeb <word> [flags]
 ### Examples
 
 ```sh
-# Noun - shows SgN, SgG, SgP, PlP
+# Noun - shows key forms
 sonaveeb puu
 # puu (noun, type 26)
-#   SgN:   puu
-#   SgG:   puu
-#   SgP:   puud
-#   PlP:   puid
+#   ainsuse nimetav:                    puu
+#   ainsuse omastav:                    puu
+#   ainsuse osastav:                    puud
+#   mitmuse osastav:                    puusid
 
-# Verb - shows ma, da, 3sg, tud
+# Verb - shows key forms
 sonaveeb tegema
 # tegema (verb, type 28)
-#   ma:    tegema
-#   da:    teha
-#   3sg:   teeb
-#   tud:   tehtud
+#   ma-tegevusnimi:                     tegema
+#   da-tegevusnimi:                     teha
+#   kindel kõneviis olevikus 3.p:       teeb
+#   mineviku kesksõna umbisikuline:     tehtud
 
 # All forms
 sonaveeb -all puu
