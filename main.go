@@ -221,7 +221,7 @@ func main() {
 	}
 
 	word := flag.Arg(0)
-	if err := run(word, cfg); err != nil {
+	if err := run(word, cfg, os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		if strings.Contains(err.Error(), "not found") {
 			os.Exit(1)
@@ -230,34 +230,61 @@ func main() {
 	}
 }
 
-func run(word string, cfg Config) error {
+func run(word string, cfg Config, w io.Writer) error {
 	client := &http.Client{}
 
-	wordID, wordValue, totalHomonyms, err := searchWord(client, cfg.APIKey, word, cfg.Homonym)
+	searchData, err := apiGet(client, cfg.APIKey, "/word/search/"+url.PathEscape(word))
 	if err != nil {
 		return err
 	}
 
-	details, err := getWordDetails(client, cfg.APIKey, wordID)
+	searchResult, err := ParseSearchResult(searchData)
 	if err != nil {
 		return err
 	}
 
-	paradigms, rawBody, err := getParadigms(client, cfg.APIKey, wordID)
+	estWords := FilterEstonianWords(searchResult.Words)
+	if len(estWords) == 0 {
+		return fmt.Errorf("word not found: %s", word)
+	}
+
+	selectedWord, err := SelectHomonym(estWords, cfg.Homonym)
+	if err != nil {
+		return err
+	}
+
+	detailsData, err := apiGet(client, cfg.APIKey, fmt.Sprintf("/word/details/%d", selectedWord.WordID))
+	if err != nil {
+		return err
+	}
+
+	details, err := ParseWordDetails(detailsData)
+	if err != nil {
+		return err
+	}
+
+	paradigmsData, err := apiGet(client, cfg.APIKey, fmt.Sprintf("/paradigm/details/%d", selectedWord.WordID))
+	if err != nil {
+		return err
+	}
+
+	if cfg.JSON {
+		var prettyJSON interface{}
+		json.Unmarshal(paradigmsData, &prettyJSON)
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(prettyJSON)
+	}
+
+	paradigms, err := ParseParadigms(paradigmsData)
 	if err != nil {
 		return err
 	}
 	details.Paradigms = paradigms
 
-	if cfg.JSON {
-		var prettyJSON interface{}
-		json.Unmarshal(rawBody, &prettyJSON)
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(prettyJSON)
-	}
-
-	printForms(wordValue, details, cfg, cfg.Homonym, totalHomonyms)
+	output := FormatOutput(selectedWord.WordValue, details, cfg.Homonym, len(estWords), cfg.All)
+	rendered := RenderOutput(output, cfg.Quiet)
+	fmt.Fprint(w, rendered)
 	return nil
 }
 
@@ -281,138 +308,4 @@ func apiGet(client *http.Client, apiKey, path string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func searchWord(client *http.Client, apiKey, word string, homonymIndex int) (int64, string, int, error) {
-	body, err := apiGet(client, apiKey, "/word/search/"+url.PathEscape(word))
-	if err != nil {
-		return 0, "", 0, err
-	}
 
-	var result WordSearchResult
-	if err := json.Unmarshal(body, &result); err != nil {
-		return 0, "", 0, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	// Filter to Estonian words only
-	var estWords []WordMatch
-	for _, w := range result.Words {
-		if w.Lang == "est" {
-			estWords = append(estWords, w)
-		}
-	}
-
-	if len(estWords) == 0 {
-		return 0, "", 0, fmt.Errorf("word not found: %s", word)
-	}
-
-	total := len(estWords)
-	idx := homonymIndex - 1
-	if idx < 0 || idx >= total {
-		return 0, "", 0, fmt.Errorf("homonym %d not found (have %d)", homonymIndex, total)
-	}
-
-	return estWords[idx].WordID, estWords[idx].WordValue, total, nil
-}
-
-func getWordDetails(client *http.Client, apiKey string, wordID int64) (*WordDetails, error) {
-	body, err := apiGet(client, apiKey, fmt.Sprintf("/word/details/%d", wordID))
-	if err != nil {
-		return nil, err
-	}
-
-	var details WordDetails
-	if err := json.Unmarshal(body, &details); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &details, nil
-}
-
-func getParadigms(client *http.Client, apiKey string, wordID int64) ([]Paradigm, []byte, error) {
-	body, err := apiGet(client, apiKey, fmt.Sprintf("/paradigm/details/%d", wordID))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var paradigms []Paradigm
-	if err := json.Unmarshal(body, &paradigms); err != nil {
-		return nil, body, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return paradigms, body, nil
-}
-
-func printForms(word string, details *WordDetails, cfg Config, homonymIndex, totalHomonyms int) {
-	if len(details.Paradigms) == 0 {
-		fmt.Println("No paradigm data available")
-		return
-	}
-
-	paradigm := details.Paradigms[0]
-	isVerb := strings.TrimSpace(details.WordClass) == "verb"
-
-	posLabel := "noun"
-	if isVerb {
-		posLabel = "verb"
-	} else if len(details.Lexemes) > 0 && len(details.Lexemes[0].Pos) > 0 {
-		code := strings.TrimSpace(details.Lexemes[0].Pos[0].Code)
-		switch code {
-		case "adj":
-			posLabel = "adj"
-		case "s":
-			posLabel = "noun"
-		case "v":
-			posLabel = "verb"
-			isVerb = true
-		}
-	}
-
-	if !cfg.Quiet {
-		if totalHomonyms > 1 {
-			fmt.Printf("%s (%s, type %s)  [%d of %d — use --homonym=N for others]\n",
-				word, posLabel, strings.TrimSpace(paradigm.InflectionTypeNr), homonymIndex, totalHomonyms)
-		} else {
-			fmt.Printf("%s (%s, type %s)\n", word, posLabel, strings.TrimSpace(paradigm.InflectionTypeNr))
-		}
-	}
-
-	formMap := make(map[string]string)
-	for _, f := range paradigm.Forms {
-		code := strings.TrimSpace(f.MorphCode)
-		formMap[code] = strings.TrimSpace(f.Value)
-	}
-
-	if cfg.All {
-		for _, f := range paradigm.Forms {
-			code := strings.TrimSpace(f.MorphCode)
-			value := strings.TrimSpace(f.Value)
-			label := morphLabels[code]
-			if label == "" {
-				label = code
-			}
-			if cfg.Quiet {
-				fmt.Printf("%s\t%s\n", code, value)
-			} else {
-				fmt.Printf("  %-45s %s\n", label+":", value)
-			}
-		}
-		return
-	}
-
-	codes := nounMorphCodes
-	if isVerb {
-		codes = verbMorphCodes
-	}
-
-	for _, code := range codes {
-		value, ok := formMap[code]
-		if !ok {
-			value = "-"
-		}
-		label := morphLabels[code]
-		if cfg.Quiet {
-			fmt.Println(value)
-		} else {
-			fmt.Printf("  %-35s %s\n", label+":", value)
-		}
-	}
-}
