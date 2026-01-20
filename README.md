@@ -43,11 +43,11 @@ sonaveeb <word> [flags]
 
 ### Flags
 
-- `--json` - Output raw JSON from API
-- `--all` - Show all forms (not just key forms)
-- `-q, --quiet` - Minimal output (forms only)
-- `--version` - Print version
-- `-h, --help` - Show help
+- `-json` - Output raw JSON from API
+- `-all` - Show all forms (not just key forms)
+- `-q`, `-quiet` - Minimal output (forms only)
+- `-version` - Print version
+- `-h` - Show help
 
 ### Examples
 
@@ -69,8 +69,8 @@ sonaveeb tegema
 #   tud:   tehtud
 
 # All forms
-sonaveeb --all puu
+sonaveeb -all puu
 
 # JSON output
-sonaveeb --json puu
+sonaveeb -json puu
 ```
