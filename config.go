@@ -20,6 +20,7 @@ type Config struct {
 
 func loadConfigFile() string {
 	// Try local config first
+	// TODO(issue #2): remove CWD config lookup; see https://github.com/LarsEckart/sonaveeb-cli/issues/2
 	if key := readKeyFromFile("config"); key != "" {
 		return key
 	}
