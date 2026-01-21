@@ -225,5 +225,5 @@ func TestIntegration_CachePopulated(t *testing.T) {
 }
 
 func toString(id int64) string {
-	return fmt.Sprintf("%d", id)
+	return strconv.FormatInt(id, 10)
 }
