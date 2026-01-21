@@ -17,3 +17,7 @@ go test -tags=integration
 ## Design Principles
 
 Design for testability using "functional core, imperative shell": keep pure business logic separate from code that does IO.
+
+## Versioning
+
+Always bump the CLI version when making changes.
