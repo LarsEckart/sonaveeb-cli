@@ -6,8 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,12 +17,14 @@ const (
 )
 
 type Config struct {
-	APIKey   string `toml:"api_key"`
-	JSON     bool
-	All      bool
-	Quiet    bool
-	Version  bool
-	Homonym  int
+	APIKey     string `toml:"api_key"`
+	JSON       bool
+	All        bool
+	Quiet      bool
+	Version    bool
+	Homonym    int
+	Refresh    bool
+	ClearCache bool
 }
 
 func loadConfigFile() string {
@@ -187,6 +187,8 @@ func main() {
 	flag.BoolVar(&cfg.Quiet, "q", false, "Minimal output (shorthand)")
 	flag.BoolVar(&cfg.Version, "version", false, "Print version")
 	flag.IntVar(&cfg.Homonym, "homonym", 1, "Select homonym (when multiple exist)")
+	flag.BoolVar(&cfg.Refresh, "refresh", false, "Bypass cache and fetch fresh data")
+	flag.BoolVar(&cfg.ClearCache, "clear-cache", false, "Clear the cache and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: sonaveeb <word> [flags]\n\n")
 		fmt.Fprintf(os.Stderr, "Query Estonian word forms from Ekilex API\n\n")
@@ -198,11 +200,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  sonaveeb puu\n")
 		fmt.Fprintf(os.Stderr, "  sonaveeb --all tegema\n")
 		fmt.Fprintf(os.Stderr, "  sonaveeb --json puu\n")
+		fmt.Fprintf(os.Stderr, "  sonaveeb --refresh puu    # bypass cache\n")
 	}
 	flag.Parse()
 
 	if cfg.Version {
 		fmt.Println(version)
+		os.Exit(0)
+	}
+
+	// Handle --clear-cache before requiring a word
+	if cfg.ClearCache {
+		cache, err := OpenCache()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error opening cache: %v\n", err)
+			os.Exit(3)
+		}
+		if cache != nil {
+			cache.Clear()
+			cache.Close()
+			fmt.Println("Cache cleared")
+		} else {
+			fmt.Println("No cache to clear")
+		}
 		os.Exit(0)
 	}
 
@@ -220,8 +240,19 @@ func main() {
 		os.Exit(2)
 	}
 
+	// Open cache (nil is fine — caching is optional)
+	cache, err := OpenCache()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: cache unavailable: %v\n", err)
+	}
+	if cache != nil {
+		defer cache.Close()
+	}
+
 	word := flag.Arg(0)
-	if err := run(word, cfg, os.Stdout); err != nil {
+	apiFetcher := NewAPIFetcher(cfg.APIKey)
+	fetcher := NewCachingFetcher(apiFetcher, cache, cfg.Refresh)
+	if err := run(word, cfg, fetcher, os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		if strings.Contains(err.Error(), "not found") {
 			os.Exit(1)
@@ -230,10 +261,8 @@ func main() {
 	}
 }
 
-func run(word string, cfg Config, w io.Writer) error {
-	client := &http.Client{}
-
-	searchData, err := apiGet(client, cfg.APIKey, "/word/search/"+url.PathEscape(word))
+func run(word string, cfg Config, fetcher Fetcher, w io.Writer) error {
+	searchData, err := fetcher.Search(word)
 	if err != nil {
 		return err
 	}
@@ -253,7 +282,7 @@ func run(word string, cfg Config, w io.Writer) error {
 		return err
 	}
 
-	detailsData, err := apiGet(client, cfg.APIKey, fmt.Sprintf("/word/details/%d", selectedWord.WordID))
+	detailsData, err := fetcher.WordDetails(selectedWord.WordID)
 	if err != nil {
 		return err
 	}
@@ -263,7 +292,7 @@ func run(word string, cfg Config, w io.Writer) error {
 		return err
 	}
 
-	paradigmsData, err := apiGet(client, cfg.APIKey, fmt.Sprintf("/paradigm/details/%d", selectedWord.WordID))
+	paradigmsData, err := fetcher.ParadigmDetails(selectedWord.WordID)
 	if err != nil {
 		return err
 	}
@@ -288,24 +317,6 @@ func run(word string, cfg Config, w io.Writer) error {
 	return nil
 }
 
-func apiGet(client *http.Client, apiKey, path string) ([]byte, error) {
-	req, err := http.NewRequest("GET", apiBaseURL+path, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("ekilex-api-key", apiKey)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("network error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: %s", resp.Status)
-	}
-
-	return io.ReadAll(resp.Body)
-}
 
 

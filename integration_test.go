@@ -28,8 +28,9 @@ func TestIntegration_NounPuu(t *testing.T) {
 		Homonym: 1,
 	}
 
+	fetcher := NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("puu", cfg, &buf)
+	err := run("puu", cfg, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
@@ -58,8 +59,9 @@ func TestIntegration_VerbTegema(t *testing.T) {
 		Homonym: 1,
 	}
 
+	fetcher := NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("tegema", cfg, &buf)
+	err := run("tegema", cfg, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
@@ -89,8 +91,9 @@ func TestIntegration_AllForms(t *testing.T) {
 		All:     true,
 	}
 
+	fetcher := NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("kass", cfg, &buf)
+	err := run("kass", cfg, fetcher, &buf)
 	if err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
