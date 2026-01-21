@@ -51,10 +51,17 @@ func TestCache(t *testing.T) {
 
 	t.Run("set overwrites existing", func(t *testing.T) {
 		key := "details:123"
-		cache.Set(key, []byte("old"))
-		cache.Set(key, []byte("new"))
+		if err := cache.Set(key, []byte("old")); err != nil {
+			t.Fatalf("failed to set old value: %v", err)
+		}
+		if err := cache.Set(key, []byte("new")); err != nil {
+			t.Fatalf("failed to set new value: %v", err)
+		}
 
-		entry, _ := cache.Get(key)
+		entry, err := cache.Get(key)
+		if err != nil {
+			t.Fatalf("failed to get: %v", err)
+		}
 		if string(entry.Value) != "new" {
 			t.Errorf("got %s, want new", entry.Value)
 		}
@@ -63,10 +70,15 @@ func TestCache(t *testing.T) {
 	t.Run("created_at is set", func(t *testing.T) {
 		key := "test:timestamp"
 		before := time.Now().Add(-time.Second)
-		cache.Set(key, []byte("value"))
+		if err := cache.Set(key, []byte("value")); err != nil {
+			t.Fatalf("failed to set: %v", err)
+		}
 		after := time.Now().Add(time.Second)
 
-		entry, _ := cache.Get(key)
+		entry, err := cache.Get(key)
+		if err != nil {
+			t.Fatalf("failed to get: %v", err)
+		}
 		if entry.CreatedAt.Before(before) || entry.CreatedAt.After(after) {
 			t.Errorf("created_at %v not in expected range [%v, %v]", entry.CreatedAt, before, after)
 		}
@@ -74,22 +86,41 @@ func TestCache(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		key := "todelete"
-		cache.Set(key, []byte("value"))
-		cache.Delete(key)
+		if err := cache.Set(key, []byte("value")); err != nil {
+			t.Fatalf("failed to set: %v", err)
+		}
+		if err := cache.Delete(key); err != nil {
+			t.Fatalf("failed to delete: %v", err)
+		}
 
-		entry, _ := cache.Get(key)
+		entry, err := cache.Get(key)
+		if err != nil {
+			t.Fatalf("failed to get: %v", err)
+		}
 		if entry != nil {
 			t.Errorf("expected nil after delete, got %v", entry)
 		}
 	})
 
 	t.Run("clear", func(t *testing.T) {
-		cache.Set("key1", []byte("val1"))
-		cache.Set("key2", []byte("val2"))
-		cache.Clear()
+		if err := cache.Set("key1", []byte("val1")); err != nil {
+			t.Fatalf("failed to set key1: %v", err)
+		}
+		if err := cache.Set("key2", []byte("val2")); err != nil {
+			t.Fatalf("failed to set key2: %v", err)
+		}
+		if err := cache.Clear(); err != nil {
+			t.Fatalf("failed to clear: %v", err)
+		}
 
-		entry1, _ := cache.Get("key1")
-		entry2, _ := cache.Get("key2")
+		entry1, err := cache.Get("key1")
+		if err != nil {
+			t.Fatalf("failed to get key1: %v", err)
+		}
+		entry2, err := cache.Get("key2")
+		if err != nil {
+			t.Fatalf("failed to get key2: %v", err)
+		}
 		if entry1 != nil || entry2 != nil {
 			t.Errorf("expected all keys cleared")
 		}
