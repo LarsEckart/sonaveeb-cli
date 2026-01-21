@@ -55,7 +55,10 @@ func TestCachingFetcher(t *testing.T) {
 
 	t.Run("caches search results", func(t *testing.T) {
 		// First call — should hit upstream
-		data1, _ := fetcher.Search("puu")
+		data1, err := fetcher.Search("puu")
+		if err != nil {
+			t.Fatalf("fetcher.Search() error: %v", err)
+		}
 		if len(mock.SearchCalls) != 1 {
 			t.Errorf("expected 1 upstream call, got %d", len(mock.SearchCalls))
 		}
@@ -64,7 +67,10 @@ func TestCachingFetcher(t *testing.T) {
 		}
 
 		// Second call — should hit cache
-		data2, _ := fetcher.Search("puu")
+		data2, err := fetcher.Search("puu")
+		if err != nil {
+			t.Fatalf("fetcher.Search() error: %v", err)
+		}
 		if len(mock.SearchCalls) != 1 {
 			t.Errorf("expected still 1 upstream call (cache hit), got %d", len(mock.SearchCalls))
 		}
@@ -74,16 +80,24 @@ func TestCachingFetcher(t *testing.T) {
 	})
 
 	t.Run("caches word details", func(t *testing.T) {
-		fetcher.WordDetails(123)
-		fetcher.WordDetails(123)
+		if _, err := fetcher.WordDetails(123); err != nil {
+			t.Fatalf("fetcher.WordDetails() error: %v", err)
+		}
+		if _, err := fetcher.WordDetails(123); err != nil {
+			t.Fatalf("fetcher.WordDetails() error: %v", err)
+		}
 		if len(mock.DetailsCalls) != 1 {
 			t.Errorf("expected 1 upstream call, got %d", len(mock.DetailsCalls))
 		}
 	})
 
 	t.Run("caches paradigm details", func(t *testing.T) {
-		fetcher.ParadigmDetails(456)
-		fetcher.ParadigmDetails(456)
+		if _, err := fetcher.ParadigmDetails(456); err != nil {
+			t.Fatalf("fetcher.ParadigmDetails() error: %v", err)
+		}
+		if _, err := fetcher.ParadigmDetails(456); err != nil {
+			t.Fatalf("fetcher.ParadigmDetails() error: %v", err)
+		}
 		if len(mock.ParadigmCalls) != 1 {
 			t.Errorf("expected 1 upstream call, got %d", len(mock.ParadigmCalls))
 		}
@@ -93,11 +107,16 @@ func TestCachingFetcher(t *testing.T) {
 		refreshFetcher := NewCachingFetcher(mock, cache, true)
 
 		// Pre-populate cache
-		cache.Set("search:maja", []byte(`cached`))
+		if err := cache.Set("search:maja", []byte(`cached`)); err != nil {
+			t.Fatalf("cache.Set() error: %v", err)
+		}
 
 		// With refresh=true, should still call upstream
 		callsBefore := len(mock.SearchCalls)
-		data, _ := refreshFetcher.Search("maja")
+		data, err := refreshFetcher.Search("maja")
+		if err != nil {
+			t.Fatalf("refreshFetcher.Search() error: %v", err)
+		}
 		if len(mock.SearchCalls) != callsBefore+1 {
 			t.Errorf("expected upstream call with refresh=true")
 		}
@@ -107,7 +126,13 @@ func TestCachingFetcher(t *testing.T) {
 		}
 
 		// Cache should be updated with fresh data
-		entry, _ := cache.Get("search:maja")
+		entry, err := cache.Get("search:maja")
+		if err != nil {
+			t.Fatalf("cache.Get() error: %v", err)
+		}
+		if entry == nil {
+			t.Fatalf("expected search:maja to be cached")
+		}
 		if string(entry.Value) != `{"words":[]}` {
 			t.Errorf("cache not updated after refresh")
 		}

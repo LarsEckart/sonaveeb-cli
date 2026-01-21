@@ -51,13 +51,18 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error opening cache: %v\n", err)
 			os.Exit(3)
 		}
-		if cache != nil {
-			cache.Clear()
-			cache.Close()
-			fmt.Println("Cache cleared")
-		} else {
-			fmt.Println("No cache to clear")
+		if err := cache.Clear(); err != nil {
+			fmt.Fprintf(os.Stderr, "error clearing cache: %v\n", err)
+			if closeErr := cache.Close(); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "error closing cache: %v\n", closeErr)
+			}
+			os.Exit(3)
 		}
+		if err := cache.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "error closing cache: %v\n", err)
+			os.Exit(3)
+		}
+		fmt.Println("Cache cleared")
 		os.Exit(0)
 	}
 

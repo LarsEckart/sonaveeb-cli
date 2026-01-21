@@ -21,7 +21,7 @@ type CacheEntry struct {
 }
 
 // OpenCache opens or creates a cache at the default location.
-// Returns nil cache (not an error) if the path cannot be created.
+// Returns an error if the cache directory or database cannot be created.
 func OpenCache() (*Cache, error) {
 	path, err := defaultCachePath()
 	if err != nil {

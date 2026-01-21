@@ -64,7 +64,7 @@ func (f *CachingFetcher) cachedFetch(key string, fetch func() ([]byte, error)) (
 		return nil, err
 	}
 
-	// Store in cache (ignore errors — caching is best-effort)
+	// Store in cache (best-effort; log errors)
 	if err := f.cache.Set(key, data); err != nil {
 		log.Printf("cache set error for %q: %v", key, err)
 	}

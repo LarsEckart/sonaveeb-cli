@@ -168,9 +168,17 @@ func TestIntegration_CachePopulated(t *testing.T) {
 
 	t.Run("details cached", func(t *testing.T) {
 		// We need to find the wordId that was used
-		searchEntry, _ := cache.Get("search:puu")
+		searchEntry, err := cache.Get("search:puu")
+		if err != nil {
+			t.Fatalf("cache.Get error: %v", err)
+		}
+		if searchEntry == nil {
+			t.Fatal("expected search:puu to be cached")
+		}
 		var result WordSearchResult
-		json.Unmarshal(searchEntry.Value, &result)
+		if err := json.Unmarshal(searchEntry.Value, &result); err != nil {
+			t.Fatalf("failed to unmarshal search entry: %v", err)
+		}
 
 		estWords := FilterEstonianWords(result.Words)
 		if len(estWords) == 0 {
@@ -188,9 +196,17 @@ func TestIntegration_CachePopulated(t *testing.T) {
 	})
 
 	t.Run("paradigm cached", func(t *testing.T) {
-		searchEntry, _ := cache.Get("search:puu")
+		searchEntry, err := cache.Get("search:puu")
+		if err != nil {
+			t.Fatalf("cache.Get error: %v", err)
+		}
+		if searchEntry == nil {
+			t.Fatal("expected search:puu to be cached")
+		}
 		var result WordSearchResult
-		json.Unmarshal(searchEntry.Value, &result)
+		if err := json.Unmarshal(searchEntry.Value, &result); err != nil {
+			t.Fatalf("failed to unmarshal search entry: %v", err)
+		}
 
 		estWords := FilterEstonianWords(result.Words)
 		if len(estWords) == 0 {
