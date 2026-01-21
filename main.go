@@ -25,17 +25,17 @@ func main() {
 	flag.BoolVar(&cfg.Refresh, "refresh", false, "Bypass cache and fetch fresh data")
 	flag.BoolVar(&cfg.ClearCache, "clear-cache", false, "Clear the cache and exit")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: sonaveeb <word> [flags]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: sonaveeb-cli <word> [flags]\n\n")
 		fmt.Fprintf(os.Stderr, "Query Estonian word forms from Ekilex API\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEnvironment:\n")
 		fmt.Fprintf(os.Stderr, "  EKILEX_API_KEY    API key (required)\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  sonaveeb puu\n")
-		fmt.Fprintf(os.Stderr, "  sonaveeb --all tegema\n")
-		fmt.Fprintf(os.Stderr, "  sonaveeb --json puu\n")
-		fmt.Fprintf(os.Stderr, "  sonaveeb --refresh puu    # bypass cache\n")
+		fmt.Fprintf(os.Stderr, "  sonaveeb-cli puu\n")
+		fmt.Fprintf(os.Stderr, "  sonaveeb-cli --all tegema\n")
+		fmt.Fprintf(os.Stderr, "  sonaveeb-cli --json puu\n")
+		fmt.Fprintf(os.Stderr, "  sonaveeb-cli --refresh puu    # bypass cache\n")
 	}
 	flag.Parse()
 

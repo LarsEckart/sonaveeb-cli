@@ -11,7 +11,7 @@ go install github.com/lars/sonaveeb-cli@latest
 Or build from source:
 
 ```sh
-go build -o sonaveeb .
+go build -o sonaveeb-cli .
 ```
 
 ## Configuration
@@ -38,7 +38,7 @@ echo "your-key-here" > ~/.config/sonaveeb/config    # user
 ## Usage
 
 ```sh
-sonaveeb [flags] <word>
+sonaveeb-cli [flags] <word>
 ```
 
 ### Flags
@@ -54,7 +54,7 @@ sonaveeb [flags] <word>
 
 ```sh
 # Noun - shows key forms
-sonaveeb puu
+sonaveeb-cli puu
 # puu (noun, type 26)
 #   ainsuse nimetav:                    puu
 #   ainsuse omastav:                    puu
@@ -62,7 +62,7 @@ sonaveeb puu
 #   mitmuse osastav:                    puusid
 
 # Verb - shows key forms
-sonaveeb tegema
+sonaveeb-cli tegema
 # tegema (verb, type 28)
 #   ma-tegevusnimi:                     tegema
 #   da-tegevusnimi:                     teha
@@ -70,17 +70,17 @@ sonaveeb tegema
 #   mineviku kesksõna umbisikuline:     tehtud
 
 # Word with multiple homonyms
-sonaveeb pank
+sonaveeb-cli pank
 # pank (noun, type 22)  [1 of 3 — use --homonym=N for others]
 #   ainsuse nimetav:                    pank
 #   ...
 
 # Select specific homonym
-sonaveeb --homonym=2 pank
+sonaveeb-cli --homonym=2 pank
 
 # All forms
-sonaveeb -all puu
+sonaveeb-cli -all puu
 
 # JSON output
-sonaveeb -json puu
+sonaveeb-cli -json puu
 ```
