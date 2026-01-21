@@ -56,7 +56,10 @@ func initSchema(db *sql.DB) error {
 	err := db.QueryRow(`
 		SELECT COUNT(*) FROM pragma_table_info('cache') WHERE name = 'created_at'
 	`).Scan(&count)
-	
+	if err != nil && err != sql.ErrNoRows {
+		return err // Propagate unexpected errors
+	}
+
 	if err == nil && count == 0 {
 		// Old schema exists, drop it (it's just a cache)
 		if _, execErr := db.Exec("DROP TABLE IF EXISTS cache"); execErr != nil {
