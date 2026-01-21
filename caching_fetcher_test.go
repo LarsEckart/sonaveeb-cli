@@ -33,10 +33,16 @@ func (m *MockFetcher) ParadigmDetails(wordID int64) ([]byte, error) {
 }
 
 func TestCachingFetcher(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "sonaveeb-caching-test")
+	tmpDir, err := os.MkdirTemp("", "sonaveeb-caching-test")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
 	defer os.RemoveAll(tmpDir)
 
-	cache, _ := OpenCacheAt(filepath.Join(tmpDir, "test.db"))
+	cache, err := OpenCacheAt(filepath.Join(tmpDir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open cache: %v", err)
+	}
 	defer cache.Close()
 
 	mock := &MockFetcher{

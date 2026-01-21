@@ -25,7 +25,7 @@ type CacheEntry struct {
 func OpenCache() (*Cache, error) {
 	path, err := defaultCachePath()
 	if err != nil {
-		return nil, nil // No cache, not an error
+		return nil, err
 	}
 	return OpenCacheAt(path)
 }
@@ -59,7 +59,9 @@ func initSchema(db *sql.DB) error {
 	
 	if err == nil && count == 0 {
 		// Old schema exists, drop it (it's just a cache)
-		db.Exec("DROP TABLE IF EXISTS cache")
+		if _, execErr := db.Exec("DROP TABLE IF EXISTS cache"); execErr != nil {
+			return execErr
+		}
 	}
 
 	_, err = db.Exec(`
