@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -11,6 +12,12 @@ import (
 // Cache provides a simple key-value store backed by SQLite.
 type Cache struct {
 	db *sql.DB
+}
+
+// CacheEntry holds a cached value and its metadata.
+type CacheEntry struct {
+	Value     []byte
+	CreatedAt time.Time
 }
 
 // OpenCache opens or creates a cache at the default location.
@@ -44,10 +51,22 @@ func OpenCacheAt(path string) (*Cache, error) {
 }
 
 func initSchema(db *sql.DB) error {
-	_, err := db.Exec(`
+	// Check if we need to migrate (old schema without created_at)
+	var count int
+	err := db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('cache') WHERE name = 'created_at'
+	`).Scan(&count)
+	
+	if err == nil && count == 0 {
+		// Old schema exists, drop it (it's just a cache)
+		db.Exec("DROP TABLE IF EXISTS cache")
+	}
+
+	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS cache (
-			key   TEXT PRIMARY KEY,
-			value BLOB
+			key        TEXT PRIMARY KEY,
+			value      BLOB,
+			created_at INTEGER
 		)
 	`)
 	return err
@@ -67,23 +86,29 @@ func defaultCachePath() (string, error) {
 }
 
 // Get retrieves a value from the cache. Returns nil if not found.
-func (c *Cache) Get(key string) ([]byte, error) {
+func (c *Cache) Get(key string) (*CacheEntry, error) {
 	var value []byte
-	err := c.db.QueryRow("SELECT value FROM cache WHERE key = ?", key).Scan(&value)
+	var createdAt int64
+	err := c.db.QueryRow(
+		"SELECT value, created_at FROM cache WHERE key = ?", key,
+	).Scan(&value, &createdAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return value, nil
+	return &CacheEntry{
+		Value:     value,
+		CreatedAt: time.Unix(createdAt, 0),
+	}, nil
 }
 
 // Set stores a value in the cache.
 func (c *Cache) Set(key string, value []byte) error {
 	_, err := c.db.Exec(
-		"INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)",
-		key, value,
+		"INSERT OR REPLACE INTO cache (key, value, created_at) VALUES (?, ?, ?)",
+		key, value, time.Now().Unix(),
 	)
 	return err
 }

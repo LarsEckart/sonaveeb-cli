@@ -101,8 +101,8 @@ func TestCachingFetcher(t *testing.T) {
 		}
 
 		// Cache should be updated with fresh data
-		cached, _ := cache.Get("search:maja")
-		if string(cached) != `{"words":[]}` {
+		entry, _ := cache.Get("search:maja")
+		if string(entry.Value) != `{"words":[]}` {
 			t.Errorf("cache not updated after refresh")
 		}
 	})

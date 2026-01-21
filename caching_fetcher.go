@@ -47,12 +47,12 @@ func (f *CachingFetcher) cachedFetch(key string, fetch func() ([]byte, error)) (
 
 	// Check cache (unless refresh mode)
 	if !f.refresh {
-		cached, err := f.cache.Get(key)
+		entry, err := f.cache.Get(key)
 		if err != nil {
 			// Cache error — log and continue to fetch
 			// For now, silently ignore cache errors
-		} else if cached != nil {
-			return cached, nil
+		} else if entry != nil {
+			return entry.Value, nil
 		}
 	}
 

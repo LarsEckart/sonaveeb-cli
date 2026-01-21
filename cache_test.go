@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestCache(t *testing.T) {
@@ -22,12 +23,12 @@ func TestCache(t *testing.T) {
 	defer cache.Close()
 
 	t.Run("get missing key returns nil", func(t *testing.T) {
-		val, err := cache.Get("nonexistent")
+		entry, err := cache.Get("nonexistent")
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if val != nil {
-			t.Errorf("expected nil, got %v", val)
+		if entry != nil {
+			t.Errorf("expected nil, got %v", entry)
 		}
 	})
 
@@ -39,12 +40,12 @@ func TestCache(t *testing.T) {
 			t.Fatalf("failed to set: %v", err)
 		}
 
-		got, err := cache.Get(key)
+		entry, err := cache.Get(key)
 		if err != nil {
 			t.Fatalf("failed to get: %v", err)
 		}
-		if string(got) != string(value) {
-			t.Errorf("got %s, want %s", got, value)
+		if string(entry.Value) != string(value) {
+			t.Errorf("got %s, want %s", entry.Value, value)
 		}
 	})
 
@@ -53,9 +54,21 @@ func TestCache(t *testing.T) {
 		cache.Set(key, []byte("old"))
 		cache.Set(key, []byte("new"))
 
-		got, _ := cache.Get(key)
-		if string(got) != "new" {
-			t.Errorf("got %s, want new", got)
+		entry, _ := cache.Get(key)
+		if string(entry.Value) != "new" {
+			t.Errorf("got %s, want new", entry.Value)
+		}
+	})
+
+	t.Run("created_at is set", func(t *testing.T) {
+		key := "test:timestamp"
+		before := time.Now().Add(-time.Second)
+		cache.Set(key, []byte("value"))
+		after := time.Now().Add(time.Second)
+
+		entry, _ := cache.Get(key)
+		if entry.CreatedAt.Before(before) || entry.CreatedAt.After(after) {
+			t.Errorf("created_at %v not in expected range [%v, %v]", entry.CreatedAt, before, after)
 		}
 	})
 
@@ -64,9 +77,9 @@ func TestCache(t *testing.T) {
 		cache.Set(key, []byte("value"))
 		cache.Delete(key)
 
-		got, _ := cache.Get(key)
-		if got != nil {
-			t.Errorf("expected nil after delete, got %v", got)
+		entry, _ := cache.Get(key)
+		if entry != nil {
+			t.Errorf("expected nil after delete, got %v", entry)
 		}
 	})
 
@@ -75,9 +88,9 @@ func TestCache(t *testing.T) {
 		cache.Set("key2", []byte("val2"))
 		cache.Clear()
 
-		got1, _ := cache.Get("key1")
-		got2, _ := cache.Get("key2")
-		if got1 != nil || got2 != nil {
+		entry1, _ := cache.Get("key1")
+		entry2, _ := cache.Get("key2")
+		if entry1 != nil || entry2 != nil {
 			t.Errorf("expected all keys cleared")
 		}
 	})
