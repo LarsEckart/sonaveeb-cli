@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // CachingFetcher wraps a Fetcher with a cache layer.
 // On cache hit, returns cached data. On miss, fetches from upstream and caches.
@@ -49,8 +52,7 @@ func (f *CachingFetcher) cachedFetch(key string, fetch func() ([]byte, error)) (
 	if !f.refresh {
 		entry, err := f.cache.Get(key)
 		if err != nil {
-			// Cache error — log and continue to fetch
-			// For now, silently ignore cache errors
+			log.Printf("cache get error for %q: %v", key, err)
 		} else if entry != nil {
 			return entry.Value, nil
 		}
@@ -63,7 +65,9 @@ func (f *CachingFetcher) cachedFetch(key string, fetch func() ([]byte, error)) (
 	}
 
 	// Store in cache (ignore errors — caching is best-effort)
-	f.cache.Set(key, data)
+	if err := f.cache.Set(key, data); err != nil {
+		log.Printf("cache set error for %q: %v", key, err)
+	}
 
 	return data, nil
 }
