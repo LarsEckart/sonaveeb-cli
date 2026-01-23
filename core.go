@@ -60,6 +60,29 @@ func GetMorphLabel(code string) string {
 	return code
 }
 
+func ExtractEnglishTranslations(details *WordDetails) []string {
+	seen := make(map[string]bool)
+	var translations []string
+
+	for _, lex := range details.Lexemes {
+		for _, group := range lex.SynonymLangGroups {
+			if group.Lang != "eng" {
+				continue
+			}
+			for _, syn := range group.Synonyms {
+				for _, word := range syn.Words {
+					if word.Lang == "eng" && word.WordValue != "" && !seen[word.WordValue] {
+						seen[word.WordValue] = true
+						translations = append(translations, word.WordValue)
+					}
+				}
+			}
+		}
+	}
+
+	return translations
+}
+
 func DeterminePartOfSpeech(details *WordDetails) (label string, isVerb bool) {
 	isVerb = strings.TrimSpace(details.WordClass) == "verb"
 	label = "noun"
@@ -99,8 +122,9 @@ func BuildFormMap(forms []Form) map[string]string {
 }
 
 type FormattedOutput struct {
-	Header string
-	Lines  []FormLine
+	Header       string
+	Translations []string
+	Lines        []FormLine
 }
 
 type FormLine struct {
@@ -127,6 +151,8 @@ func FormatOutput(word string, details *WordDetails, homonymIndex, totalHomonyms
 	} else {
 		output.Header = fmt.Sprintf("%s (%s, type %s)", word, posLabel, inflectionType)
 	}
+
+	output.Translations = ExtractEnglishTranslations(details)
 
 	formMap := BuildFormMap(paradigm.Forms)
 
@@ -165,6 +191,10 @@ func RenderOutput(output FormattedOutput, quiet bool) string {
 	if !quiet && output.Header != "" {
 		sb.WriteString(output.Header)
 		sb.WriteString("\n")
+	}
+
+	if !quiet && len(output.Translations) > 0 {
+		sb.WriteString(fmt.Sprintf("  English: %s\n", strings.Join(output.Translations, ", ")))
 	}
 
 	for _, line := range output.Lines {

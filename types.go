@@ -19,7 +19,22 @@ type WordDetails struct {
 }
 
 type Lexeme struct {
-	Pos []PosInfo `json:"pos"`
+	Pos              []PosInfo        `json:"pos"`
+	SynonymLangGroups []SynonymLangGroup `json:"synonymLangGroups"`
+}
+
+type SynonymLangGroup struct {
+	Lang     string    `json:"lang"`
+	Synonyms []Synonym `json:"synonyms"`
+}
+
+type Synonym struct {
+	Words []SynonymWord `json:"words"`
+}
+
+type SynonymWord struct {
+	WordValue string `json:"wordValue"`
+	Lang      string `json:"lang"`
 }
 
 type PosInfo struct {
