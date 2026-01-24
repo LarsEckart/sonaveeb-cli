@@ -37,13 +37,13 @@ func TestCachingFetcher(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cache, err := OpenCacheAt(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	mock := &MockFetcher{
 		SearchResponse:   []byte(`{"words":[]}`),

@@ -43,7 +43,7 @@ func OpenCacheAt(path string) (*Cache, error) {
 	}
 
 	if err := initSchema(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 

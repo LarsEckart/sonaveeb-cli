@@ -13,14 +13,14 @@ func TestCache(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cachePath := filepath.Join(tmpDir, "test.db")
 	cache, err := OpenCacheAt(cachePath)
 	if err != nil {
 		t.Fatalf("failed to open cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = cache.Close() }()
 
 	t.Run("get missing key returns nil", func(t *testing.T) {
 		entry, err := cache.Get("nonexistent")

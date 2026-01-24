@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	version    = "0.1.2"
+	version    = "0.1.3"
 	apiBaseURL = "https://ekilex.ee/api"
 )
 
@@ -92,7 +92,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "warning: cache unavailable: %v\n", err)
 	}
 	if cache != nil {
-		defer cache.Close()
+		defer func() { _ = cache.Close() }()
 	}
 
 	word := flag.Arg(0)
@@ -145,7 +145,9 @@ func run(word string, cfg Config, fetcher Fetcher, w io.Writer) error {
 
 	if cfg.JSON {
 		var prettyJSON interface{}
-		json.Unmarshal(paradigmsData, &prettyJSON)
+		if err := json.Unmarshal(paradigmsData, &prettyJSON); err != nil {
+			return fmt.Errorf("failed to parse paradigms JSON: %w", err)
+		}
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		return enc.Encode(prettyJSON)
@@ -159,6 +161,6 @@ func run(word string, cfg Config, fetcher Fetcher, w io.Writer) error {
 
 	output := FormatOutput(selectedWord.WordValue, details, cfg.Homonym, len(estWords), cfg.All)
 	rendered := RenderOutput(output, cfg.Quiet)
-	fmt.Fprint(w, rendered)
+	_, _ = fmt.Fprint(w, rendered)
 	return nil
 }
