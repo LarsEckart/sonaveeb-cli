@@ -141,45 +141,86 @@ func FormatOutput(word string, details *WordDetails, homonymIndex, totalHomonyms
 		return output
 	}
 
-	paradigm := details.Paradigms[0]
 	posLabel, isVerb := DeterminePartOfSpeech(details)
-	inflectionType := strings.TrimSpace(paradigm.InflectionTypeNr)
+
+	// Collect unique inflection types
+	var types []string
+	seenTypes := make(map[string]bool)
+	for _, p := range details.Paradigms {
+		t := strings.TrimSpace(p.InflectionTypeNr)
+		if !seenTypes[t] {
+			seenTypes[t] = true
+			types = append(types, t)
+		}
+	}
+	typeStr := strings.Join(types, ", ")
 
 	if totalHomonyms > 1 {
 		output.Header = fmt.Sprintf("%s (%s, type %s)  [%d of %d — use --homonym=N for others]",
-			word, posLabel, inflectionType, homonymIndex, totalHomonyms)
+			word, posLabel, typeStr, homonymIndex, totalHomonyms)
 	} else {
-		output.Header = fmt.Sprintf("%s (%s, type %s)", word, posLabel, inflectionType)
+		output.Header = fmt.Sprintf("%s (%s, type %s)", word, posLabel, typeStr)
 	}
 
 	output.Translations = ExtractEnglishTranslations(details)
 
-	formMap := BuildFormMap(paradigm.Forms)
+	// Merge forms from all paradigms: map[morphCode] -> unique values (preserving order)
+	mergedForms := make(map[string][]string)
+	seenValues := make(map[string]map[string]bool)
 
-	if showAll {
+	for _, paradigm := range details.Paradigms {
 		for _, f := range paradigm.Forms {
 			code := strings.TrimSpace(f.MorphCode)
 			value := strings.TrimSpace(f.Value)
+
+			if seenValues[code] == nil {
+				seenValues[code] = make(map[string]bool)
+			}
+			if !seenValues[code][value] {
+				seenValues[code][value] = true
+				mergedForms[code] = append(mergedForms[code], value)
+			}
+		}
+	}
+
+	if showAll {
+		// Collect all unique codes in order of first appearance
+		var allCodes []string
+		seenCodes := make(map[string]bool)
+		for _, paradigm := range details.Paradigms {
+			for _, f := range paradigm.Forms {
+				code := strings.TrimSpace(f.MorphCode)
+				if !seenCodes[code] {
+					seenCodes[code] = true
+					allCodes = append(allCodes, code)
+				}
+			}
+		}
+
+		for _, code := range allCodes {
+			values := mergedForms[code]
+			output.Lines = append(output.Lines, FormLine{
+				Code:  code,
+				Label: GetMorphLabel(code),
+				Value: strings.Join(values, ", "),
+			})
+		}
+	} else {
+		codes := SelectMorphCodes(isVerb)
+		for _, code := range codes {
+			values, ok := mergedForms[code]
+			var value string
+			if !ok {
+				value = "-"
+			} else {
+				value = strings.Join(values, ", ")
+			}
 			output.Lines = append(output.Lines, FormLine{
 				Code:  code,
 				Label: GetMorphLabel(code),
 				Value: value,
 			})
 		}
-		return output
-	}
-
-	codes := SelectMorphCodes(isVerb)
-	for _, code := range codes {
-		value, ok := formMap[code]
-		if !ok {
-			value = "-"
-		}
-		output.Lines = append(output.Lines, FormLine{
-			Code:  code,
-			Label: GetMorphLabel(code),
-			Value: value,
-		})
 	}
 
 	return output

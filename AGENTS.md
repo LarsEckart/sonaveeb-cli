@@ -8,6 +8,8 @@ After any changes, run:
 go build && go test
 ```
 
+Use `golangci-lint` to verify code.
+
 For full testing including integration tests (requires EKILEX_API_KEY):
 
 ```bash

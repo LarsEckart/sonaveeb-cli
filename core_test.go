@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -247,5 +248,51 @@ func TestRenderOutput_Normal(t *testing.T) {
 	}
 	if result[:3] != "puu" {
 		t.Errorf("expected header to start with 'puu', got %q", result[:3])
+	}
+}
+
+func TestFormatOutput_MultipleParadigms(t *testing.T) {
+	details := &WordDetails{
+		Paradigms: []Paradigm{
+			{
+				InflectionTypeNr: "12",
+				Forms: []Form{
+					{Value: "väike", MorphCode: "SgN"},
+					{Value: "väikese", MorphCode: "SgG"},
+					{Value: "väikest", MorphCode: "SgP"},
+					{Value: "väikesi", MorphCode: "PlP"},
+				},
+			},
+			{
+				InflectionTypeNr: "10",
+				Forms: []Form{
+					{Value: "väike", MorphCode: "SgN"},
+					{Value: "väikse", MorphCode: "SgG"},
+					{Value: "väikest", MorphCode: "SgP"},
+					{Value: "väikseid", MorphCode: "PlP"},
+				},
+			},
+		},
+	}
+
+	output := FormatOutput("väike", details, 1, 1, false)
+
+	// Should merge forms from both paradigms
+	if len(output.Lines) != 4 {
+		t.Errorf("expected 4 lines, got %d", len(output.Lines))
+	}
+
+	// Check header shows both types
+	if !strings.Contains(output.Header, "type 12, 10") {
+		t.Errorf("expected header to contain 'type 12, 10', got %q", output.Header)
+	}
+
+	// Check genitive has both forms merged
+	for _, line := range output.Lines {
+		if line.Code == "SgG" {
+			if line.Value != "väikese, väikse" {
+				t.Errorf("expected genitive 'väikese, väikse', got %q", line.Value)
+			}
+		}
 	}
 }
