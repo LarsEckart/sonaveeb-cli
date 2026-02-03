@@ -1,3 +1,5 @@
+[![Certified Shovelware](https://justin.searls.co/img/shovelware.svg)](https://justin.searls.co/shovelware/)
+
 # sonaveeb-cli
 
 CLI for querying Estonian word forms from the [Ekilex API](https://github.com/keeleinstituut/ekilex/wiki/Ekilex-API).
