@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bufio"
@@ -7,28 +7,16 @@ import (
 	"strings"
 )
 
-type Config struct {
-	APIKey     string
-	JSON       bool
-	All        bool
-	Quiet      bool
-	Version    bool
-	Homonym    int
-	Refresh    bool
-	ClearCache bool
-}
-
-func loadConfigFile() string {
-	// Try local config first
-	// TODO(issue #2): remove CWD config lookup; see https://github.com/LarsEckart/sonaveeb-cli/issues/2
+func LoadAPIKey() string {
 	if key := readKeyFromFile("config"); key != "" {
 		return key
 	}
-	// Then try XDG config
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
+
 	configPath := filepath.Join(home, ".config", "sonaveeb", "config")
 	return readKeyFromFile(configPath)
 }
@@ -39,9 +27,11 @@ func readKeyFromFile(path string) string {
 		return ""
 	}
 	defer func() { _ = f.Close() }()
+
 	scanner := bufio.NewScanner(f)
 	if scanner.Scan() {
 		return strings.TrimSpace(scanner.Text())
 	}
+
 	return ""
 }

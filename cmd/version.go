@@ -1,8 +1,8 @@
-package main
+package cmd
 
 import "runtime/debug"
 
-const fallbackVersion = "dev"
+const fallbackVersion = "v0.1.7-dev"
 
 var version = ""
 

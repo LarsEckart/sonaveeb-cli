@@ -1,6 +1,6 @@
-package main
+package sonaveeb
 
-// Estonian morphology labels and code selections
+// Estonian morphology labels and code selections.
 
 var morphLabels = map[string]string{
 	// Singular noun cases
@@ -88,3 +88,10 @@ var morphLabels = map[string]string{
 
 var nounMorphCodes = []string{"SgN", "SgG", "SgP", "PlP"}
 var verbMorphCodes = []string{"Sup", "Inf", "IndPrSg3", "PtsPtIps"}
+
+func GetMorphLabel(code string) string {
+	if label, ok := morphLabels[code]; ok {
+		return label
+	}
+	return code
+}

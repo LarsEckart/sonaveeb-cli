@@ -1,4 +1,4 @@
-package main
+package cache
 
 import (
 	"os"
@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-// MockFetcher records calls and returns canned responses.
-type MockFetcher struct {
+type mockFetcher struct {
 	SearchCalls   []string
 	DetailsCalls  []int64
 	ParadigmCalls []int64
@@ -17,17 +16,17 @@ type MockFetcher struct {
 	ParadigmResponse []byte
 }
 
-func (m *MockFetcher) Search(word string) ([]byte, error) {
+func (m *mockFetcher) Search(word string) ([]byte, error) {
 	m.SearchCalls = append(m.SearchCalls, word)
 	return m.SearchResponse, nil
 }
 
-func (m *MockFetcher) WordDetails(wordID int64) ([]byte, error) {
+func (m *mockFetcher) WordDetails(wordID int64) ([]byte, error) {
 	m.DetailsCalls = append(m.DetailsCalls, wordID)
 	return m.DetailsResponse, nil
 }
 
-func (m *MockFetcher) ParadigmDetails(wordID int64) ([]byte, error) {
+func (m *mockFetcher) ParadigmDetails(wordID int64) ([]byte, error) {
 	m.ParadigmCalls = append(m.ParadigmCalls, wordID)
 	return m.ParadigmResponse, nil
 }
@@ -39,22 +38,21 @@ func TestCachingFetcher(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	cache, err := OpenCacheAt(filepath.Join(tmpDir, "test.db"))
+	store, err := OpenCacheAt(filepath.Join(tmpDir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open cache: %v", err)
 	}
-	defer func() { _ = cache.Close() }()
+	defer func() { _ = store.Close() }()
 
-	mock := &MockFetcher{
+	mock := &mockFetcher{
 		SearchResponse:   []byte(`{"words":[]}`),
 		DetailsResponse:  []byte(`{"wordClass":"noun"}`),
 		ParadigmResponse: []byte(`[]`),
 	}
 
-	fetcher := NewCachingFetcher(mock, cache, false)
+	fetcher := NewCachingFetcher(mock, store, false)
 
 	t.Run("caches search results", func(t *testing.T) {
-		// First call — should hit upstream
 		data1, err := fetcher.Search("puu")
 		if err != nil {
 			t.Fatalf("fetcher.Search() error: %v", err)
@@ -66,7 +64,6 @@ func TestCachingFetcher(t *testing.T) {
 			t.Errorf("unexpected response: %s", data1)
 		}
 
-		// Second call — should hit cache
 		data2, err := fetcher.Search("puu")
 		if err != nil {
 			t.Fatalf("fetcher.Search() error: %v", err)
@@ -104,14 +101,12 @@ func TestCachingFetcher(t *testing.T) {
 	})
 
 	t.Run("refresh bypasses cache read", func(t *testing.T) {
-		refreshFetcher := NewCachingFetcher(mock, cache, true)
+		refreshFetcher := NewCachingFetcher(mock, store, true)
 
-		// Pre-populate cache
-		if err := cache.Set("search:maja", []byte(`cached`)); err != nil {
-			t.Fatalf("cache.Set() error: %v", err)
+		if err := store.Set("search:maja", []byte(`cached`)); err != nil {
+			t.Fatalf("store.Set() error: %v", err)
 		}
 
-		// With refresh=true, should still call upstream
 		callsBefore := len(mock.SearchCalls)
 		data, err := refreshFetcher.Search("maja")
 		if err != nil {
@@ -120,15 +115,13 @@ func TestCachingFetcher(t *testing.T) {
 		if len(mock.SearchCalls) != callsBefore+1 {
 			t.Errorf("expected upstream call with refresh=true")
 		}
-		// Should return fresh data, not cached
 		if string(data) != `{"words":[]}` {
 			t.Errorf("expected fresh data, got %s", data)
 		}
 
-		// Cache should be updated with fresh data
-		entry, err := cache.Get("search:maja")
+		entry, err := store.Get("search:maja")
 		if err != nil {
-			t.Fatalf("cache.Get() error: %v", err)
+			t.Fatalf("store.Get() error: %v", err)
 		}
 		if entry == nil {
 			t.Fatalf("expected search:maja to be cached")

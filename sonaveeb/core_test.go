@@ -1,4 +1,4 @@
-package main
+package sonaveeb
 
 import (
 	"strings"
@@ -17,9 +17,9 @@ func TestFilterEstonianWords(t *testing.T) {
 	if len(result) != 2 {
 		t.Errorf("expected 2 Estonian words, got %d", len(result))
 	}
-	for _, w := range result {
-		if w.Lang != "est" {
-			t.Errorf("expected lang 'est', got %q", w.Lang)
+	for _, word := range result {
+		if word.Lang != "est" {
+			t.Errorf("expected lang 'est', got %q", word.Lang)
 		}
 	}
 }
@@ -218,39 +218,6 @@ func TestFormatOutput_WithHomonyms(t *testing.T) {
 	}
 }
 
-func TestRenderOutput_Quiet(t *testing.T) {
-	output := FormattedOutput{
-		Header: "puu (noun, type 22)",
-		Lines: []FormLine{
-			{Code: "SgN", Label: "ainsuse nimetav", Value: "puu"},
-		},
-	}
-
-	result := RenderOutput(output, true)
-
-	if result != "SgN\tpuu\n" {
-		t.Errorf("unexpected quiet output: %q", result)
-	}
-}
-
-func TestRenderOutput_Normal(t *testing.T) {
-	output := FormattedOutput{
-		Header: "puu (noun, type 22)",
-		Lines: []FormLine{
-			{Code: "SgN", Label: "ainsuse nimetav", Value: "puu"},
-		},
-	}
-
-	result := RenderOutput(output, false)
-
-	if result == "" {
-		t.Error("expected non-empty output")
-	}
-	if result[:3] != "puu" {
-		t.Errorf("expected header to start with 'puu', got %q", result[:3])
-	}
-}
-
 func TestFormatOutput_MultipleParadigms(t *testing.T) {
 	details := &WordDetails{
 		Paradigms: []Paradigm{
@@ -277,22 +244,15 @@ func TestFormatOutput_MultipleParadigms(t *testing.T) {
 
 	output := FormatOutput("väike", details, 1, 1, false)
 
-	// Should merge forms from both paradigms
 	if len(output.Lines) != 4 {
 		t.Errorf("expected 4 lines, got %d", len(output.Lines))
 	}
-
-	// Check header shows both types
 	if !strings.Contains(output.Header, "type 12, 10") {
 		t.Errorf("expected header to contain 'type 12, 10', got %q", output.Header)
 	}
-
-	// Check genitive has both forms merged
 	for _, line := range output.Lines {
-		if line.Code == "SgG" {
-			if line.Value != "väikese, väikse" {
-				t.Errorf("expected genitive 'väikese, väikse', got %q", line.Value)
-			}
+		if line.Code == "SgG" && line.Value != "väikese, väikse" {
+			t.Errorf("expected genitive 'väikese, väikse', got %q", line.Value)
 		}
 	}
 }

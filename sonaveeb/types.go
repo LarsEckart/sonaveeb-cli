@@ -1,6 +1,6 @@
-package main
+package sonaveeb
 
-// API response types from Ekilex
+// API response types from Ekilex.
 
 type WordSearchResult struct {
 	Words []WordMatch `json:"words"`
@@ -19,7 +19,7 @@ type WordDetails struct {
 }
 
 type Lexeme struct {
-	Pos              []PosInfo        `json:"pos"`
+	Pos               []PosInfo          `json:"pos"`
 	SynonymLangGroups []SynonymLangGroup `json:"synonymLangGroups"`
 }
 
@@ -53,4 +53,23 @@ type Paradigm struct {
 type Form struct {
 	Value     string `json:"value"`
 	MorphCode string `json:"morphCode"`
+}
+
+type LookupResult struct {
+	SelectedWord  WordMatch
+	TotalHomonyms int
+	Details       *WordDetails
+	RawParadigms  []byte
+}
+
+type Output struct {
+	Header       string
+	Translations []string
+	Lines        []OutputLine
+}
+
+type OutputLine struct {
+	Code  string
+	Label string
+	Value string
 }

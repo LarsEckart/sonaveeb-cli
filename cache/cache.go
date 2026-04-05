@@ -1,7 +1,8 @@
-package main
+package cache
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -21,11 +22,10 @@ type CacheEntry struct {
 }
 
 // OpenCache opens or creates a cache at the default location.
-// Returns an error if the cache directory or database cannot be created.
 func OpenCache() (*Cache, error) {
 	path, err := defaultCachePath()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve cache path: %w", err)
 	}
 	return OpenCacheAt(path)
 }
@@ -33,35 +33,33 @@ func OpenCache() (*Cache, error) {
 // OpenCacheAt opens or creates a cache at the given path.
 func OpenCacheAt(path string) (*Cache, error) {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, err
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("create cache directory: %w", err)
 	}
 
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open cache database: %w", err)
 	}
 
 	if err := initSchema(db); err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fmt.Errorf("initialize cache schema: %w", err)
 	}
 
 	return &Cache{db: db}, nil
 }
 
 func initSchema(db *sql.DB) error {
-	// Check if we need to migrate (old schema without created_at)
 	var count int
 	err := db.QueryRow(`
 		SELECT COUNT(*) FROM pragma_table_info('cache') WHERE name = 'created_at'
 	`).Scan(&count)
 	if err != nil && err != sql.ErrNoRows {
-		return err // Propagate unexpected errors
+		return err
 	}
 
 	if err == nil && count == 0 {
-		// Old schema exists, drop it (it's just a cache)
 		if _, execErr := db.Exec("DROP TABLE IF EXISTS cache"); execErr != nil {
 			return execErr
 		}
@@ -78,7 +76,6 @@ func initSchema(db *sql.DB) error {
 }
 
 func defaultCachePath() (string, error) {
-	// Prefer XDG_CACHE_HOME, fall back to ~/.cache
 	cacheDir := os.Getenv("XDG_CACHE_HOME")
 	if cacheDir == "" {
 		home, err := os.UserHomeDir()
@@ -87,6 +84,7 @@ func defaultCachePath() (string, error) {
 		}
 		cacheDir = filepath.Join(home, ".cache")
 	}
+
 	return filepath.Join(cacheDir, "sonaveeb", "cache.db"), nil
 }
 
@@ -103,6 +101,7 @@ func (c *Cache) Get(key string) (*CacheEntry, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &CacheEntry{
 		Value:     value,
 		CreatedAt: time.Unix(createdAt, 0),

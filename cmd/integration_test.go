@@ -1,6 +1,6 @@
 //go:build integration
 
-package main
+package cmd
 
 import (
 	"bytes"
@@ -11,12 +11,16 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/lars/sonaveeb-cli/cache"
+	"github.com/lars/sonaveeb-cli/config"
+	"github.com/lars/sonaveeb-cli/sonaveeb"
 )
 
 func getAPIKey(t *testing.T) string {
 	key := os.Getenv("EKILEX_API_KEY")
 	if key == "" {
-		key = loadConfigFile()
+		key = config.LoadAPIKey()
 	}
 	if key == "" {
 		t.Skip("EKILEX_API_KEY not set, skipping integration test")
@@ -26,21 +30,15 @@ func getAPIKey(t *testing.T) string {
 
 func TestIntegration_NounPuu(t *testing.T) {
 	apiKey := getAPIKey(t)
+	cfg := cliConfig{Homonym: 1}
 
-	cfg := Config{
-		APIKey:  apiKey,
-		Homonym: 1,
-	}
-
-	fetcher := NewAPIFetcher(apiKey)
+	fetcher := sonaveeb.NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("puu", cfg, fetcher, &buf)
-	if err != nil {
+	if err := run("puu", cfg, fetcher, &buf); err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
 
 	output := buf.String()
-
 	if !strings.Contains(output, "puu") {
 		t.Errorf("expected output to contain 'puu', got:\n%s", output)
 	}
@@ -57,21 +55,15 @@ func TestIntegration_NounPuu(t *testing.T) {
 
 func TestIntegration_VerbTegema(t *testing.T) {
 	apiKey := getAPIKey(t)
+	cfg := cliConfig{Homonym: 1}
 
-	cfg := Config{
-		APIKey:  apiKey,
-		Homonym: 1,
-	}
-
-	fetcher := NewAPIFetcher(apiKey)
+	fetcher := sonaveeb.NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("tegema", cfg, fetcher, &buf)
-	if err != nil {
+	if err := run("tegema", cfg, fetcher, &buf); err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
 
 	output := buf.String()
-
 	if !strings.Contains(output, "tegema") {
 		t.Errorf("expected output to contain 'tegema', got:\n%s", output)
 	}
@@ -88,27 +80,20 @@ func TestIntegration_VerbTegema(t *testing.T) {
 
 func TestIntegration_AllForms(t *testing.T) {
 	apiKey := getAPIKey(t)
+	cfg := cliConfig{Homonym: 1, All: true}
 
-	cfg := Config{
-		APIKey:  apiKey,
-		Homonym: 1,
-		All:     true,
-	}
-
-	fetcher := NewAPIFetcher(apiKey)
+	fetcher := sonaveeb.NewAPIFetcher(apiKey)
 	var buf bytes.Buffer
-	err := run("kass", cfg, fetcher, &buf)
-	if err != nil {
+	if err := run("kass", cfg, fetcher, &buf); err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
 
 	output := buf.String()
-
 	if !strings.Contains(output, "kass") {
 		t.Errorf("expected output to contain 'kass', got:\n%s", output)
 	}
 	if !strings.Contains(output, "mitmuse nimetav") {
-		t.Errorf("expected output to contain 'mitmuse nimetav' (plural form), got:\n%s", output)
+		t.Errorf("expected output to contain 'mitmuse nimetav', got:\n%s", output)
 	}
 	if !strings.Contains(output, "mitmuse omastav") {
 		t.Errorf("expected output to contain 'mitmuse omastav', got:\n%s", output)
@@ -118,77 +103,69 @@ func TestIntegration_AllForms(t *testing.T) {
 func TestIntegration_CachePopulated(t *testing.T) {
 	apiKey := getAPIKey(t)
 
-	// Create a fresh temp cache
 	tmpDir, err := os.MkdirTemp("", "sonaveeb-integration-cache")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cachePath := filepath.Join(tmpDir, "cache.db")
-	cache, err := OpenCacheAt(cachePath)
+	store, err := cache.OpenCacheAt(cachePath)
 	if err != nil {
 		t.Fatalf("failed to open cache: %v", err)
 	}
-	defer cache.Close()
+	defer func() { _ = store.Close() }()
 
-	// Make a real API call through caching fetcher
-	apiFetcher := NewAPIFetcher(apiKey)
-	fetcher := NewCachingFetcher(apiFetcher, cache, false)
+	apiFetcher := sonaveeb.NewAPIFetcher(apiKey)
+	fetcher := cache.NewCachingFetcher(apiFetcher, store, false)
 
-	cfg := Config{APIKey: apiKey, Homonym: 1}
+	cfg := cliConfig{Homonym: 1}
 	var buf bytes.Buffer
 	before := time.Now()
-	err = run("puu", cfg, fetcher, &buf)
-	if err != nil {
+	if err := run("puu", cfg, fetcher, &buf); err != nil {
 		t.Fatalf("run() error: %v", err)
 	}
 
-	// Verify cache entries exist
 	t.Run("search cached", func(t *testing.T) {
-		entry, err := cache.Get("search:puu")
+		entry, err := store.Get("search:puu")
 		if err != nil {
-			t.Fatalf("cache.Get error: %v", err)
+			t.Fatalf("store.Get error: %v", err)
 		}
 		if entry == nil {
 			t.Fatal("expected search:puu to be cached")
 		}
 
-		// Verify it's valid JSON
-		var result WordSearchResult
+		var result sonaveeb.WordSearchResult
 		if err := json.Unmarshal(entry.Value, &result); err != nil {
 			t.Errorf("cached value is not valid JSON: %v", err)
 		}
-
-		// Verify timestamp is recent (within a few seconds, accounting for second precision)
 		if entry.CreatedAt.Before(before.Add(-2 * time.Second)) {
 			t.Errorf("created_at %v is too old (test started %v)", entry.CreatedAt, before)
 		}
 	})
 
 	t.Run("details cached", func(t *testing.T) {
-		// We need to find the wordId that was used
-		searchEntry, err := cache.Get("search:puu")
+		searchEntry, err := store.Get("search:puu")
 		if err != nil {
-			t.Fatalf("cache.Get error: %v", err)
+			t.Fatalf("store.Get error: %v", err)
 		}
 		if searchEntry == nil {
 			t.Fatal("expected search:puu to be cached")
 		}
-		var result WordSearchResult
+		var result sonaveeb.WordSearchResult
 		if err := json.Unmarshal(searchEntry.Value, &result); err != nil {
 			t.Fatalf("failed to unmarshal search entry: %v", err)
 		}
 
-		estWords := FilterEstonianWords(result.Words)
+		estWords := sonaveeb.FilterEstonianWords(result.Words)
 		if len(estWords) == 0 {
 			t.Skip("no Estonian words found")
 		}
 		wordID := estWords[0].WordID
 
-		entry, err := cache.Get("details:" + toString(wordID))
+		entry, err := store.Get("details:" + toString(wordID))
 		if err != nil {
-			t.Fatalf("cache.Get error: %v", err)
+			t.Fatalf("store.Get error: %v", err)
 		}
 		if entry == nil {
 			t.Fatalf("expected details:%d to be cached", wordID)
@@ -196,27 +173,27 @@ func TestIntegration_CachePopulated(t *testing.T) {
 	})
 
 	t.Run("paradigm cached", func(t *testing.T) {
-		searchEntry, err := cache.Get("search:puu")
+		searchEntry, err := store.Get("search:puu")
 		if err != nil {
-			t.Fatalf("cache.Get error: %v", err)
+			t.Fatalf("store.Get error: %v", err)
 		}
 		if searchEntry == nil {
 			t.Fatal("expected search:puu to be cached")
 		}
-		var result WordSearchResult
+		var result sonaveeb.WordSearchResult
 		if err := json.Unmarshal(searchEntry.Value, &result); err != nil {
 			t.Fatalf("failed to unmarshal search entry: %v", err)
 		}
 
-		estWords := FilterEstonianWords(result.Words)
+		estWords := sonaveeb.FilterEstonianWords(result.Words)
 		if len(estWords) == 0 {
 			t.Skip("no Estonian words found")
 		}
 		wordID := estWords[0].WordID
 
-		entry, err := cache.Get("paradigm:" + toString(wordID))
+		entry, err := store.Get("paradigm:" + toString(wordID))
 		if err != nil {
-			t.Fatalf("cache.Get error: %v", err)
+			t.Fatalf("store.Get error: %v", err)
 		}
 		if entry == nil {
 			t.Fatalf("expected paradigm:%d to be cached", wordID)

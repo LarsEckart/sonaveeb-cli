@@ -1,4 +1,4 @@
-package main
+package cache
 
 import (
 	"os"
@@ -8,7 +8,6 @@ import (
 )
 
 func TestCache(t *testing.T) {
-	// Create temp directory for test cache
 	tmpDir, err := os.MkdirTemp("", "sonaveeb-cache-test")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
@@ -16,14 +15,14 @@ func TestCache(t *testing.T) {
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cachePath := filepath.Join(tmpDir, "test.db")
-	cache, err := OpenCacheAt(cachePath)
+	store, err := OpenCacheAt(cachePath)
 	if err != nil {
 		t.Fatalf("failed to open cache: %v", err)
 	}
-	defer func() { _ = cache.Close() }()
+	defer func() { _ = store.Close() }()
 
 	t.Run("get missing key returns nil", func(t *testing.T) {
-		entry, err := cache.Get("nonexistent")
+		entry, err := store.Get("nonexistent")
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -36,11 +35,11 @@ func TestCache(t *testing.T) {
 		key := "search:puu"
 		value := []byte(`{"words":[{"wordId":123}]}`)
 
-		if err := cache.Set(key, value); err != nil {
+		if err := store.Set(key, value); err != nil {
 			t.Fatalf("failed to set: %v", err)
 		}
 
-		entry, err := cache.Get(key)
+		entry, err := store.Get(key)
 		if err != nil {
 			t.Fatalf("failed to get: %v", err)
 		}
@@ -51,14 +50,14 @@ func TestCache(t *testing.T) {
 
 	t.Run("set overwrites existing", func(t *testing.T) {
 		key := "details:123"
-		if err := cache.Set(key, []byte("old")); err != nil {
+		if err := store.Set(key, []byte("old")); err != nil {
 			t.Fatalf("failed to set old value: %v", err)
 		}
-		if err := cache.Set(key, []byte("new")); err != nil {
+		if err := store.Set(key, []byte("new")); err != nil {
 			t.Fatalf("failed to set new value: %v", err)
 		}
 
-		entry, err := cache.Get(key)
+		entry, err := store.Get(key)
 		if err != nil {
 			t.Fatalf("failed to get: %v", err)
 		}
@@ -70,12 +69,12 @@ func TestCache(t *testing.T) {
 	t.Run("created_at is set", func(t *testing.T) {
 		key := "test:timestamp"
 		before := time.Now().Add(-time.Second)
-		if err := cache.Set(key, []byte("value")); err != nil {
+		if err := store.Set(key, []byte("value")); err != nil {
 			t.Fatalf("failed to set: %v", err)
 		}
 		after := time.Now().Add(time.Second)
 
-		entry, err := cache.Get(key)
+		entry, err := store.Get(key)
 		if err != nil {
 			t.Fatalf("failed to get: %v", err)
 		}
@@ -86,14 +85,14 @@ func TestCache(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		key := "todelete"
-		if err := cache.Set(key, []byte("value")); err != nil {
+		if err := store.Set(key, []byte("value")); err != nil {
 			t.Fatalf("failed to set: %v", err)
 		}
-		if err := cache.Delete(key); err != nil {
+		if err := store.Delete(key); err != nil {
 			t.Fatalf("failed to delete: %v", err)
 		}
 
-		entry, err := cache.Get(key)
+		entry, err := store.Get(key)
 		if err != nil {
 			t.Fatalf("failed to get: %v", err)
 		}
@@ -103,21 +102,21 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("clear", func(t *testing.T) {
-		if err := cache.Set("key1", []byte("val1")); err != nil {
+		if err := store.Set("key1", []byte("val1")); err != nil {
 			t.Fatalf("failed to set key1: %v", err)
 		}
-		if err := cache.Set("key2", []byte("val2")); err != nil {
+		if err := store.Set("key2", []byte("val2")); err != nil {
 			t.Fatalf("failed to set key2: %v", err)
 		}
-		if err := cache.Clear(); err != nil {
+		if err := store.Clear(); err != nil {
 			t.Fatalf("failed to clear: %v", err)
 		}
 
-		entry1, err := cache.Get("key1")
+		entry1, err := store.Get("key1")
 		if err != nil {
 			t.Fatalf("failed to get key1: %v", err)
 		}
-		entry2, err := cache.Get("key2")
+		entry2, err := store.Get("key2")
 		if err != nil {
 			t.Fatalf("failed to get key2: %v", err)
 		}
