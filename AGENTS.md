@@ -1,16 +1,19 @@
 # sonaveeb-cli
 
-## Testing
+## Commands
 
-After any changes, run:
+Use the standard Make targets shared across these Go CLI repos:
 
-```bash
-go build && go test
-```
+- Format: `make fmt`
+- Lint: `make lint`
+- Test: `make test`
+- Build: `make build`
+- Check: `make check`
+- Install: `make install`
 
-Use `golangci-lint` to verify code.
+`make build` formats first. `make check` runs lint, test, then build.
 
-For full testing including integration tests (requires EKILEX_API_KEY):
+For full testing including integration tests (requires `EKILEX_API_KEY`):
 
 ```bash
 go test -tags=integration
