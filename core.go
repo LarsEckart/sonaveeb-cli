@@ -235,14 +235,14 @@ func RenderOutput(output FormattedOutput, quiet bool) string {
 	}
 
 	if !quiet && len(output.Translations) > 0 {
-		sb.WriteString(fmt.Sprintf("  English: %s\n", strings.Join(output.Translations, ", ")))
+		_, _ = fmt.Fprintf(&sb, "  English: %s\n", strings.Join(output.Translations, ", "))
 	}
 
 	for _, line := range output.Lines {
 		if quiet {
-			sb.WriteString(fmt.Sprintf("%s\t%s\n", line.Code, line.Value))
+			_, _ = fmt.Fprintf(&sb, "%s\t%s\n", line.Code, line.Value)
 		} else {
-			sb.WriteString(fmt.Sprintf("  %-45s %s\n", line.Label+":", line.Value))
+			_, _ = fmt.Fprintf(&sb, "  %-45s %s\n", line.Label+":", line.Value)
 		}
 	}
 

@@ -49,7 +49,7 @@ sonaveeb-cli [flags] <word>
 - `-all` - Show all forms (not just key forms)
 - `-homonym=N` - Select which homonym to show (when multiple exist)
 - `-q`, `-quiet` - Minimal output (forms only)
-- `-version` - Print version
+- `--version` - Print version
 - `-h` - Show help
 
 ### Examples
@@ -85,4 +85,7 @@ sonaveeb-cli -all puu
 
 # JSON output
 sonaveeb-cli -json puu
+
+# Version
+sonaveeb-cli --version
 ```

@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	version    = "0.1.5"
 	apiBaseURL = "https://ekilex.ee/api"
 )
 
@@ -40,7 +39,7 @@ func main() {
 	flag.Parse()
 
 	if cfg.Version {
-		fmt.Println(version)
+		fmt.Printf("sonaveeb-cli version %s\n", appVersion())
 		os.Exit(0)
 	}
 
