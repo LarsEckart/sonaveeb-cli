@@ -13,7 +13,15 @@ go install github.com/lars/sonaveeb-cli@latest
 Or build from source:
 
 ```sh
-go build -o sonaveeb-cli .
+make build
+```
+
+Available helper targets:
+
+```sh
+make fmt
+make test
+make check
 ```
 
 ## Configuration
