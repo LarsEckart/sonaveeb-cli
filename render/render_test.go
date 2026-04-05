@@ -3,7 +3,7 @@ package render
 import (
 	"testing"
 
-	"github.com/lars/sonaveeb-cli/sonaveeb"
+	"github.com/LarsEckart/sonaveeb-cli/sonaveeb"
 )
 
 func TestRenderOutput_Quiet(t *testing.T) {

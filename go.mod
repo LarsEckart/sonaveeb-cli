@@ -1,4 +1,4 @@
-module github.com/lars/sonaveeb-cli
+module github.com/LarsEckart/sonaveeb-cli
 
 go 1.25.5
 

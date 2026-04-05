@@ -7,7 +7,7 @@ CLI for querying Estonian word forms from the [Ekilex API](https://github.com/ke
 ## Installation
 
 ```sh
-go install github.com/lars/sonaveeb-cli@latest
+go install github.com/LarsEckart/sonaveeb-cli@latest
 ```
 
 Or build from source:
@@ -22,6 +22,36 @@ Available helper targets:
 make fmt
 make test
 make check
+```
+
+## Releasing
+
+1. Make sure `main` is clean and up to date.
+2. Run the release checks:
+
+```sh
+go build && go test
+golangci-lint run
+```
+
+3. Create and push a version tag:
+
+```sh
+git checkout main
+git pull
+git tag v0.1.7
+git push origin main
+git push origin v0.1.7
+```
+
+Pushing a `v*` tag triggers GitHub Actions to build and publish a release via GoReleaser.
+
+To install that exact release locally:
+
+```sh
+go install github.com/LarsEckart/sonaveeb-cli@v0.1.7
+hash -r
+sonaveeb-cli --version
 ```
 
 ## Configuration

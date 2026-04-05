@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lars/sonaveeb-cli/sonaveeb"
+	"github.com/LarsEckart/sonaveeb-cli/sonaveeb"
 )
 
 func RenderOutput(output sonaveeb.Output, quiet bool) string {

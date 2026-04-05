@@ -3,7 +3,7 @@ package cache
 import (
 	"fmt"
 
-	"github.com/lars/sonaveeb-cli/sonaveeb"
+	"github.com/LarsEckart/sonaveeb-cli/sonaveeb"
 )
 
 // CachingFetcher wraps a Fetcher with a cache layer.

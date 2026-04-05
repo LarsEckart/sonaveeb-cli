@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lars/sonaveeb-cli/cmd"
+	"github.com/LarsEckart/sonaveeb-cli/cmd"
 )
 
 type exitCoder interface {

@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lars/sonaveeb-cli/cache"
-	"github.com/lars/sonaveeb-cli/config"
-	"github.com/lars/sonaveeb-cli/render"
-	"github.com/lars/sonaveeb-cli/sonaveeb"
+	"github.com/LarsEckart/sonaveeb-cli/cache"
+	"github.com/LarsEckart/sonaveeb-cli/config"
+	"github.com/LarsEckart/sonaveeb-cli/render"
+	"github.com/LarsEckart/sonaveeb-cli/sonaveeb"
 )
 
 type cliConfig struct {

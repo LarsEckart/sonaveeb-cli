@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lars/sonaveeb-cli/cache"
-	"github.com/lars/sonaveeb-cli/config"
-	"github.com/lars/sonaveeb-cli/sonaveeb"
+	"github.com/LarsEckart/sonaveeb-cli/cache"
+	"github.com/LarsEckart/sonaveeb-cli/config"
+	"github.com/LarsEckart/sonaveeb-cli/sonaveeb"
 )
 
 func getAPIKey(t *testing.T) string {
