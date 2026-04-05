@@ -1,6 +1,7 @@
 package sonaveeb
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,7 +45,7 @@ func (f *APIFetcher) ParadigmDetails(wordID int64) ([]byte, error) {
 }
 
 func (f *APIFetcher) get(path string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, f.baseURL+path, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, f.baseURL+path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
